@@ -1,0 +1,16 @@
+/target
+
+# specific to my problems
+/src/input
+
+# Don't upload creds
+AOC_SESSION
+
+# Not sure why mac creates
+.DS_Store
+
+# Remove for binaries
+Cargo.lock
+
+# Could leave, but probably not much value
+.vscode
