@@ -4,18 +4,6 @@ fn main() {
         .filter_map(|s| s.split_once(" "))
         .map(|(a, b)| (a, b.parse::<i64>().unwrap()))
         .collect();
-    let (mut x, mut y) = (0, 0);
-
-    for ele in &lines {
-        match ele.0 {
-            "forward" => x += ele.1,
-            "up" => y -= ele.1,
-            "down" => y += ele.1,
-            _ => {}
-        }
-    }
-    println!("Part 1 {} {} {}", x, y, x * y);
-
     let (mut x, mut y, mut aim) = (0, 0, 0);
     for ele in &lines {
         match ele.0 {
@@ -28,5 +16,6 @@ fn main() {
             _ => {}
         }
     }
+    println!("Part 1 {} {} {}", x, aim, x * aim);
     println!("Part 2 {} {} {}", x, y, x * y);
 }
