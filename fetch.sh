@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # Fetches the input, prints to stdout and copies to clipboard.
 # This gives both a quick overview of what the input looks like
