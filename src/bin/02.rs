@@ -1,21 +1,15 @@
 fn main() {
-    let lines: Vec<_> = include_str!("../input/2.txt")
+    let (x, y, aim) = include_str!("../input/2.txt")
         .lines()
-        .filter_map(|s| s.split_once(" "))
-        .map(|(a, b)| (a, b.parse::<i64>().unwrap()))
-        .collect();
-    let (mut x, mut y, mut aim) = (0, 0, 0);
-    for ele in &lines {
-        match ele.0 {
-            "forward" => {
-                x += ele.1;
-                y += ele.1 * aim
+        .map(|line| line.split_once(' ').unwrap())
+        .fold((0, 0, 0), |(x, y, aim), (cmd, amount)| {
+            match (cmd, amount.parse::<i32>().unwrap()) {
+                ("forward", value) => (x + value, y + value * aim, aim),
+                ("down", value) => (x, y, aim + value),
+                ("up", value) => (x, y, aim - value),
+                _ => unreachable!(),
             }
-            "up" => aim -= ele.1,
-            "down" => aim += ele.1,
-            _ => {}
-        }
-    }
-    println!("Part 1 {} {} {}", x, aim, x * aim);
-    println!("Part 2 {} {} {}", x, y, x * y);
+        });
+    println!("Part 1 {}", x * aim);
+    println!("Part 2 {}", x * y);
 }
