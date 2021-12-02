@@ -1,8 +1,8 @@
 fn main() {
     let lines: Vec<_> = include_str!("../input/2.txt")
         .lines()
-        .map(|s| s.split_ascii_whitespace())
-        .map(|mut s| (s.next().unwrap(), s.next().unwrap().parse::<i64>().unwrap()))
+        .filter_map(|s| s.split_once(" "))
+        .map(|(a, b)| (a, b.parse::<i64>().unwrap()))
         .collect();
     let (mut x, mut y) = (0, 0);
 
