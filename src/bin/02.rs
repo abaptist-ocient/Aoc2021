@@ -4,8 +4,8 @@ fn main() {
         .map(|s| s.split_ascii_whitespace())
         .map(|mut s| (s.next().unwrap(), s.next().unwrap().parse::<i64>().unwrap()))
         .collect();
-    let mut x = 0;
-    let mut y = 0;
+    let (mut x, mut y) = (0, 0);
+
     for ele in &lines {
         match ele.0 {
             "forward" => x += ele.1,
@@ -16,9 +16,7 @@ fn main() {
     }
     println!("Part 1 {} {} {}", x, y, x * y);
 
-    let mut x = 0;
-    let mut y = 0;
-    let mut aim = 0;
+    let (mut x, mut y, mut aim) = (0, 0, 0);
     for ele in &lines {
         match ele.0 {
             "forward" => {
