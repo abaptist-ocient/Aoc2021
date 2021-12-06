@@ -1,11 +1,10 @@
 fn main() {
-    let mut lines = include_str!("../input/6.txt").lines();
     let mut fish = vec![0; 9];
-    lines
-        .next()
-        .unwrap()
+
+    include_str!("../input/6.txt")
         .split(',')
-        .for_each(|x| fish[x.parse::<usize>().unwrap()] += 1);
+        .filter_map(|x| x.parse::<usize>().ok())
+        .for_each(|x| fish[x] += 1);
 
     for _ in 0..256 {
         let mut new_fish = vec![0; 9];
