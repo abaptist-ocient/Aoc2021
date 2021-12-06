@@ -21,10 +21,8 @@ fn main() {
         all_boards.iter_mut().for_each(|board| {
             board.iter_mut().for_each(|row| {
                 row.iter_mut().for_each(|cell| {
-                    if let Some(val) = cell {
-                        if *val == call {
-                            cell.take();
-                        }
+                    if cell.unwrap_or_default() == call {
+                        cell.take();
                     }
                 })
             })
@@ -42,6 +40,7 @@ fn main() {
 }
 
 fn is_bingo(board: &Board) -> bool {
+    // note: assumes a 5x5 square board
     for x in 0..5 {
         let mut row_match = true;
         let mut col_match = true;
@@ -56,6 +55,7 @@ fn is_bingo(board: &Board) -> bool {
     false
 }
 
+// compute sum of cells on board multiplied by num called
 fn sum_board(winner: Board, call: &str) -> usize {
     winner.iter().fold(0, |acc, row| {
         acc + row.iter().fold(0, |acc, col| {
