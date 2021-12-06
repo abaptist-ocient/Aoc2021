@@ -1,12 +1,9 @@
-type Board = Vec<Vec<Option<usize>>>;
+#![feature(drain_filter)]
+type Board = Vec<Vec<Option<&'static str>>>;
 
 fn main() {
     let mut lines = include_str!("../input/4.txt").lines();
-    let called = lines.next().unwrap();
-    let called: Vec<_> = called
-        .split(',')
-        .map(|x| x.parse::<usize>().unwrap())
-        .collect();
+    let called: Vec<&str> = lines.next().unwrap().split(',').collect();
 
     let mut all_boards: Vec<Board> = lines
         .into_iter()
@@ -14,70 +11,55 @@ fn main() {
         .chunks(6)
         .map(|line_group| {
             (1..6)
-                .map(|i| {
-                    line_group[i]
-                        .split_whitespace()
-                        .map(|x| Some(x.parse::<usize>().unwrap()))
-                        .collect()
-                })
+                .map(|i| line_group[i].split_whitespace().map(Some).collect())
                 .collect()
         })
         .collect();
 
-    let mut win_board = None;
-    let mut lose_board = None;
-    for call in &called {
-        if lose_board.is_some() {
-            break;
-        };
-        (0..all_boards.len()).for_each(|b| {
-            for r in 0..5 {
-                for c in 0..5 {
-                    if let Some(val) = all_boards[b][r][c] {
-                        if val == *call {
-                            all_boards[b][r][c].take();
+    let mut winners = Vec::new();
+    for call in called {
+        all_boards.iter_mut().for_each(|board| {
+            board.iter_mut().for_each(|row| {
+                row.iter_mut().for_each(|cell| {
+                    if let Some(val) = cell {
+                        if *val == call {
+                            cell.take();
                         }
                     }
-                }
-            }
+                })
+            })
         });
-        let len = all_boards.len();
-        (0..len).rev().for_each(|b| {
-            let mut bingo = false;
-            for x in 0..5 {
-                let (mut row_match, mut col_match) = (true, true);
-                for y in 0..5 {
-                    if all_boards[b][x][y].is_some() {
-                        row_match = false;
-                    }
-                    if all_boards[b][y][x].is_some() {
-                        col_match = false;
-                    }
-                }
-                if row_match | col_match {
-                    bingo = true;
-                    break;
-                }
-            }
-            if bingo {
-                let winner = all_boards.remove(b);
-                if win_board.is_none() {
-                    win_board.replace((winner, call));
-                } else if all_boards.is_empty() {
-                    lose_board.replace((winner, call));
-                }
-            }
-        });
-    }
-    let (board, board_call) = win_board.unwrap();
-    println!("Part 1 {}", sum_board(board) * board_call);
 
-    let (board, board_call) = lose_board.unwrap();
-    println!("Part 2 {}", sum_board(board) * board_call);
+        winners.append(
+            &mut all_boards
+                .drain_filter(|b| is_bingo(b))
+                .map(|b| sum_board(b, call))
+                .collect(),
+        );
+    }
+    println!("Part 1 {}", winners.first().unwrap());
+    println!("Part 2 {}", winners.last().unwrap());
 }
 
-fn sum_board(winner: Vec<Vec<Option<usize>>>) -> usize {
+fn is_bingo(board: &Board) -> bool {
+    for x in 0..5 {
+        let mut row_match = true;
+        let mut col_match = true;
+        for y in 0..5 {
+            row_match &= board[x][y].is_none();
+            col_match &= board[y][x].is_none();
+        }
+        if row_match | col_match {
+            return true;
+        }
+    }
+    false
+}
+
+fn sum_board(winner: Board, call: &str) -> usize {
     winner.iter().fold(0, |acc, row| {
-        acc + row.iter().fold(0, |acc, col| acc + col.unwrap_or(0))
-    })
+        acc + row.iter().fold(0, |acc, col| {
+            acc + col.unwrap_or("0").parse::<usize>().unwrap()
+        })
+    }) * call.parse::<usize>().unwrap()
 }
