@@ -8,26 +8,21 @@ fn main() {
         .map(|x| x.parse::<usize>().unwrap())
         .collect();
 
-    // strip out the empty line
-    lines.next();
-
-    let mut all_boards: Vec<Board> = Vec::new();
-    let mut cur_board = Vec::new();
-
-    for line in lines {
-        if line.is_empty() {
-            all_boards.push(cur_board.clone());
-            cur_board.clear();
-        } else {
-            cur_board.push(
-                line.split_whitespace()
-                    .map(|x| Some(x.parse::<usize>().unwrap()))
-                    .collect(),
-            );
-        }
-    }
-    // need to push the last board :(
-    all_boards.push(cur_board);
+    let mut all_boards: Vec<Board> = lines
+        .into_iter()
+        .collect::<Vec<_>>()
+        .chunks(6)
+        .map(|line_group| {
+            (1..6)
+                .map(|i| {
+                    line_group[i]
+                        .split_whitespace()
+                        .map(|x| Some(x.parse::<usize>().unwrap()))
+                        .collect()
+                })
+                .collect()
+        })
+        .collect();
 
     let mut win_board = None;
     let mut lose_board = None;
