@@ -1,7 +1,7 @@
 fn main() {
     let mut input: Vec<isize> = include_str!("../input/7.txt")
         .split(',')
-        .filter_map(|x| x.parse::<isize>().ok())
+        .filter_map(|x| x.trim().parse::<isize>().ok())
         .collect();
     input.sort_unstable();
     let output =
