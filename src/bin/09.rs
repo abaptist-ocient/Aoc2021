@@ -14,25 +14,10 @@ fn get_value(p: &Point) -> u32 {
         Basin(x, _) => *x,
     }
 }
-impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::NotBasin(l0), Self::NotBasin(r0)) => l0 == r0,
-            (Self::Basin(l0, l1), Self::Basin(r0, r1)) => l0 == r0 && l1 == r1,
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
-}
-
-impl PartialOrd for Point {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        get_value(self).partial_cmp(&get_value(other))
-    }
-}
 
 fn update_point(point: &mut Point, basin_id: usize) -> bool {
-    if let NotBasin(_) = *point {
-        *point = Basin(get_value(point), basin_id);
+    if let NotBasin(val) = *point {
+        *point = Basin(val, basin_id);
         return true;
     }
     false
@@ -67,10 +52,11 @@ fn main() {
     let mut sum = 0;
     (1..&lines.len() - 1).for_each(|i| {
         (1..lines[i].len() - 1).for_each(|j| {
-            if lines[i][j] < lines[i - 1][j]
-                && lines[i][j] < lines[i][j - 1]
-                && lines[i][j] < lines[i + 1][j]
-                && lines[i][j] < lines[i][j + 1]
+            let val = get_value(&lines[i][j]);
+            if val < get_value(&lines[i - 1][j])
+                && val < get_value(&lines[i][j - 1])
+                && val < get_value(&lines[i + 1][j])
+                && val < get_value(&lines[i][j + 1])
             {
                 sum += get_value(&lines[i][j]) + 1;
                 update_point(&mut lines[i][j], basin_id);
