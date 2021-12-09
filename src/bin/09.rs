@@ -24,42 +24,29 @@ fn update_point(point: &mut Point, basin_id: usize) -> bool {
 }
 
 fn main() {
-    let lines = include_str!("../input/9.txt").lines();
-    let mut lines: Vec<Vec<Point>> = lines
-        .map(|line| {
-            line.chars()
-                .map(|c| {
-                    let d = c.to_digit(10).unwrap();
-                    if let 0..=8 = d {
-                        NotBasin(d)
-                    } else {
-                        Wall
-                    }
-                })
-                .collect()
-        })
-        .collect();
-    // surround with Walls
-    lines.push(vec![Wall; lines[0].len()]);
-    lines.insert(0, vec![Wall; lines[0].len()]);
-    for line in lines.iter_mut() {
-        line.push(Wall);
-        line.insert(0, Wall);
+    let lines: Vec<_> = include_str!("../input/9.txt").lines().collect();
+    // make board 1 cell larger on all sides
+    let mut board = vec![vec![Wall; lines.len() + 2]; lines[0].len() + 2];
+    for (i, line) in lines.iter().enumerate() {
+        for (j, c) in line.chars().enumerate() {
+            let d = c.to_digit(10).unwrap();
+            board[i][j] = if let 0..=8 = d { NotBasin(d) } else { Wall }
+        }
     }
 
     // new basin for each min
     let mut basin_id = 0;
     let mut sum = 0;
-    (1..&lines.len() - 1).for_each(|i| {
-        (1..lines[i].len() - 1).for_each(|j| {
-            let val = get_value(&lines[i][j]);
-            if val < get_value(&lines[i - 1][j])
-                && val < get_value(&lines[i][j - 1])
-                && val < get_value(&lines[i + 1][j])
-                && val < get_value(&lines[i][j + 1])
+    (1..&board.len() - 1).for_each(|i| {
+        (1..board[i].len() - 1).for_each(|j| {
+            let val = get_value(&board[i][j]);
+            if val < get_value(&board[i - 1][j])
+                && val < get_value(&board[i][j - 1])
+                && val < get_value(&board[i + 1][j])
+                && val < get_value(&board[i][j + 1])
             {
-                sum += get_value(&lines[i][j]) + 1;
-                update_point(&mut lines[i][j], basin_id);
+                sum += get_value(&board[i][j]) + 1;
+                update_point(&mut board[i][j], basin_id);
                 basin_id += 1;
             }
         });
@@ -70,13 +57,13 @@ fn main() {
     let mut has_change = true;
     while has_change {
         has_change = false;
-        (1..&lines.len() - 1).for_each(|i| {
-            (1..lines[i].len() - 1).for_each(|j| {
-                if let Basin(_, basin_id) = lines[i][j] {
-                    has_change |= update_point(&mut lines[i][j - 1], basin_id);
-                    has_change |= update_point(&mut lines[i][j + 1], basin_id);
-                    has_change |= update_point(&mut lines[i - 1][j], basin_id);
-                    has_change |= update_point(&mut lines[i + 1][j], basin_id);
+        (1..&board.len() - 1).for_each(|i| {
+            (1..board[i].len() - 1).for_each(|j| {
+                if let Basin(_, basin_id) = board[i][j] {
+                    has_change |= update_point(&mut board[i][j - 1], basin_id);
+                    has_change |= update_point(&mut board[i][j + 1], basin_id);
+                    has_change |= update_point(&mut board[i - 1][j], basin_id);
+                    has_change |= update_point(&mut board[i + 1][j], basin_id);
                 }
             });
         });
@@ -84,14 +71,14 @@ fn main() {
 
     // count basin sizes
     let mut counts = vec![0; basin_id];
-    (1..&lines.len() - 1).for_each(|i| {
-        (1..lines[i].len() - 1).for_each(|j| {
-            if let Basin(_, basin_id) = lines[i][j] {
-                counts[basin_id] += 1;
+    board.iter().for_each(|row| {
+        row.iter().for_each(|cell| {
+            if let Basin(_, basin_id) = cell {
+                counts[*basin_id] += 1;
             }
-        });
+        })
     });
     counts.sort_unstable();
     counts.reverse();
-    println!("Part 2 {}", counts[0] * counts[1] * counts[2]);
+    println!("Part 2 {}", counts[..3].iter().product::<usize>());
 }
