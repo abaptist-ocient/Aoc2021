@@ -1,100 +1,56 @@
-use std::collections::{HashMap, HashSet};
+use itertools::Itertools;
 
-fn main() {
-    let lines = include_str!("../input/8.txt").lines();
-    println!("part 1 {}", run_fn(&lines, process_row1));
-    println!("part 2 {}", run_fn(&lines, process_row2));
-}
+// derived from https://github.com/timvisee/advent-of-code-2021/blob/master/day08b/src/main.rs as a cool solution
+// idea for part 2 is to get the first nums (1, 7, 4, 8) and then subract 1 and 4 from each other number
+pub fn main() {
+    let lines = include_str!("../input/8.txt").lines().collect_vec();
 
-fn run_fn<F>(lines: &std::str::Lines, fun: F) -> usize
-where
-    F: Fn(&str, &str) -> usize,
-{
-    lines
-        .clone()
-        .map(|line| {
-            line.split_once('|')
-                .map(|(keys, values)| fun(keys, values))
+    println!(
+        "part 1 {}",
+        lines
+            .iter()
+            .map(|line| line
+                .split_once('|')
                 .unwrap()
-        })
-        .sum::<usize>()
-}
+                .1
+                .split_ascii_whitespace()
+                .filter(|d| matches!(d.len(), 2 | 3 | 4 | 7))
+                .count())
+            .sum::<usize>()
+    );
 
-fn process_row1(_: &str, values: &str) -> usize {
-    values
-        .split_whitespace()
-        .map(|code| code.len())
-        .filter(|&l| (l == 2) || (l == 3) || (l == 4) | (l == 7))
-        .count()
-}
-
-const DATA_MAP: &[&str] = &[
-    "abcefg", "cf", "acdeg", "acdfg", "bdcf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg",
-];
-
-fn process_row2(keys: &str, values: &str) -> usize {
-    let mut m = HashMap::new();
-    keys.split_whitespace().for_each(|code| {
-        m.entry(code.len())
-            .or_insert_with(Vec::<HashSet<char>>::new)
-            .push(code.chars().collect())
-    });
-
-    let mut t = HashMap::new();
-    t.insert(&'a', &m[&3][0] - &m[&2][0]);
-    t.insert(
-        &'g',
-        m[&6]
+    println!(
+        "part 2 {}",
+        lines
             .iter()
-            .map(|x| &(x - &t[&'a']) - &m[&4][0])
-            .find(|s| s.len() == 1)
-            .unwrap(),
+            .map(|line| {
+                let part = line.split_once('|').unwrap();
+                let input = part.0.split_ascii_whitespace().collect_vec();
+                let one = input.iter().find(|d| d.len() == 2).unwrap();
+                let four = input.iter().find(|d| d.len() == 4).unwrap();
+                part.1
+                    .split_ascii_whitespace()
+                    .map(|d| match d.len() {
+                        2 => 1,
+                        3 => 7,
+                        4 => 4,
+                        7 => 8,
+                        len => match (
+                            len,
+                            d.chars().filter(|&b| one.contains(b)).count(),
+                            d.chars().filter(|&b| four.contains(b)).count(),
+                        ) {
+                            (5, 1, 3) => 5,
+                            (5, 2, 3) => 3,
+                            (5, 1, 2) => 2,
+                            (6, 1, 3) => 6,
+                            (6, 2, 3) => 0,
+                            (6, 2, 4) => 9,
+                            _ => unreachable!(),
+                        },
+                    })
+                    .fold(0, |sum, n| sum * 10 + n)
+            })
+            .sum::<u32>()
     );
-    t.insert(
-        &'d',
-        m[&5]
-            .iter()
-            .map(|x| &(&(x - &t[&'a']) - &t[&'g']) - &m[&2][0])
-            .find(|s| s.len() == 1)
-            .unwrap(),
-    );
-    t.insert(&'b', &(&m[&4][0] - &m[&2][0]) - &t[&'d']);
-    t.insert(
-        &'c',
-        m[&6]
-            .iter()
-            .map(|x| &m[&3][0] - x)
-            .find(|s| s.len() == 1)
-            .unwrap(),
-    );
-    t.insert(&'f', &m[&2][0] - &t[&'c']);
-    t.insert(
-        &'e',
-        &(&(&(&(&(&m[&7][0] - &t[&'a']) - &t[&'b']) - &t[&'c']) - &t[&'d']) - &t[&'f']) - &t[&'g'],
-    );
-
-    let t: HashMap<char, char> = t
-        .iter()
-        .map(|(k, v)| (**k, *v.iter().next().unwrap()))
-        .collect();
-
-    let mut digits = vec![HashSet::new(); 10];
-    for i in 0..digits.len() {
-        digits[i].extend(
-            DATA_MAP[i]
-                .chars()
-                .map(|d| &t[&d])
-                .collect::<HashSet<&char>>(),
-        );
-    }
-
-    values.split_whitespace().fold(0, |val, digit| {
-        let digit: HashSet<char> = digit.chars().collect();
-        for (i, m) in digits.iter().enumerate() {
-            if m == &digit {
-                return i + val * 10;
-            };
-        }
-        9999999
-    })
 }
