@@ -1,53 +1,52 @@
 use std::collections::{HashMap, HashSet};
 
 fn main() {
-    let mut graph: HashMap<&'static str, HashSet<&'static str>> = HashMap::new();
+    let mut g: HashMap<&'static str, HashSet<&'static str>> = HashMap::new();
     include_str!("../input/12.txt").lines().for_each(|line| {
         if let Some((a, b)) = line.split_once('-') {
-            graph.entry(a).or_insert_with(HashSet::new).insert(b);
-            graph.entry(b).or_insert_with(HashSet::new).insert(a);
+            g.entry(a).or_insert_with(HashSet::new).insert(b);
+            g.entry(b).or_insert_with(HashSet::new).insert(a);
         }
     });
 
-    println!(
-        "{:?}",
-        follow_path(&graph, &mut HashMap::from([("start", 0)]), "start")
-    );
+    println!("{}", go(&g, &mut HashMap::from([("start", 0)]), "start", 1));
+    println!("{}", go(&g, &mut HashMap::from([("start", 0)]), "start", 2));
 
-    fn follow_path(
+    fn go(
         graph: &HashMap<&'static str, HashSet<&'static str>>,
         path: &mut HashMap<&'static str, usize>,
         start: &'static str,
+        max: usize,
     ) -> usize {
+        // this check is only valid if we allow running through small caves more than once
+        if max > 1 && path.values().filter(|&v| *v == 0).count() > 2 {
+            return 0;
+        }
         graph[start]
             .iter()
-            .map(|&child| follow_child(child, path, graph))
+            .map(|&child| follow(child, path, graph, max))
             .sum()
     }
 
-    fn follow_child(
+    fn follow(
         child: &'static str,
         path: &mut HashMap<&'static str, usize>,
         graph: &HashMap<&'static str, HashSet<&'static str>>,
+        max: usize,
     ) -> usize {
-        // at end - found a path
+        // at tne end - counts as 1 path
         if child == "end" {
             return 1;
         }
-        // if we are at 0 for a path, don't proceed
+        // we have gone through small caves too many times - can't go down this child
         if path.get(child) == Some(&0) {
             return 0;
         }
-
+        // set this before iteration and unset aftewards - is there a better pattern?
         if child.to_uppercase() != child {
-            *path.entry(child).or_insert(2) -= 1;
+            *path.entry(child).or_insert(max) -= 1;
         }
-        let val = if path.values().filter(|&v| *v == 0).count() > 2 {
-            // we visited two small caves more than once
-            0
-        } else {
-            follow_path(graph, path, child)
-        };
+        let val = go(graph, path, child, max);
         if child.to_uppercase() != child {
             *path.get_mut(child).unwrap() += 1;
         }
