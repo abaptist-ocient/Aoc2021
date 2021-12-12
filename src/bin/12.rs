@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 fn main() {
-    let mut g: HashMap<&'static str, HashSet<&'static str>> = HashMap::new();
+    let mut g: HashMap<&str, HashSet<&str>> = HashMap::new();
     include_str!("../input/12.txt").lines().for_each(|line| {
         if let Some((a, b)) = line.split_once('-') {
             g.entry(a).or_insert_with(HashSet::new).insert(b);
@@ -9,8 +9,8 @@ fn main() {
         }
     });
 
-    println!("{}", go(&g, &mut HashMap::from([("start", 0)]), "start", 1));
-    println!("{}", go(&g, &mut HashMap::from([("start", 0)]), "start", 2));
+    println!("{}", go(&g, &mut HashMap::from([("start", 1)]), "start", 1));
+    println!("{}", go(&g, &mut HashMap::from([("start", 2)]), "start", 2));
 
     fn go(
         graph: &HashMap<&'static str, HashSet<&'static str>>,
@@ -19,7 +19,7 @@ fn main() {
         max: usize,
     ) -> usize {
         // this check is only valid if we allow running through small caves more than once
-        if max > 1 && path.values().filter(|&v| *v == 0).count() > 2 {
+        if max > 1 && path.values().filter(|&v| *v == max).count() > 2 {
             return 0;
         }
         graph[start]
@@ -39,16 +39,16 @@ fn main() {
             return 1;
         }
         // we have gone through small caves too many times - can't go down this child
-        if path.get(child) == Some(&0) {
+        if path.get(child) == Some(&max) {
             return 0;
         }
         // set this before iteration and unset aftewards - is there a better pattern?
         if child.to_uppercase() != child {
-            *path.entry(child).or_insert(max) -= 1;
+            *path.entry(child).or_insert(0) += 1;
         }
         let val = go(graph, path, child, max);
         if child.to_uppercase() != child {
-            *path.get_mut(child).unwrap() += 1;
+            *path.get_mut(child).unwrap() -= 1;
         }
         val
     }
