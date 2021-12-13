@@ -12,10 +12,10 @@ fn main() {
     println!("{}", go(&g, &mut HashMap::from([("start", 1)]), "start", 1));
     println!("{}", go(&g, &mut HashMap::from([("start", 2)]), "start", 2));
 
-    fn go(
-        graph: &HashMap<&'static str, HashSet<&'static str>>,
-        path: &mut HashMap<&'static str, usize>,
-        start: &'static str,
+    fn go<'a>(
+        graph: &HashMap<&'a str, HashSet<&'a str>>,
+        path: &mut HashMap<&'a str, usize>,
+        start: &'a str,
         max: usize,
     ) -> usize {
         // this check is only valid if we allow running through small caves more than once
@@ -28,10 +28,10 @@ fn main() {
             .sum()
     }
 
-    fn follow(
-        child: &'static str,
-        path: &mut HashMap<&'static str, usize>,
-        graph: &HashMap<&'static str, HashSet<&'static str>>,
+    fn follow<'a>(
+        child: &'a str,
+        path: &mut HashMap<&'a str, usize>,
+        graph: &HashMap<&'a str, HashSet<&'a str>>,
         max: usize,
     ) -> usize {
         // at tne end - counts as 1 path
