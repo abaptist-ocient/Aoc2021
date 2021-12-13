@@ -1,3 +1,5 @@
+#![feature(int_abs_diff)]
+
 fn uint(s: &str) -> usize {
     s.parse::<usize>().unwrap()
 }
@@ -10,9 +12,7 @@ fn main() {
         for fold in folds {
             for (x, y) in &mut points {
                 let coord = if fold.0 { y } else { x };
-                if *coord > fold.1 {
-                    *coord = 2 * fold.1 - *coord;
-                }
+                *coord = fold.1 - coord.abs_diff(fold.1);
             }
         }
         (0..=points.iter().fold(0, |b, &p| std::cmp::max(b, p.0))).for_each(|i| {
