@@ -63,18 +63,11 @@ fn main() {
 }
 
 fn get_neighbors((i, j): Position, (x, y): Position) -> Vec<Position> {
-    let mut neighbors = Vec::new();
-    if i > 0 {
-        neighbors.push((i - 1, j));
-    }
-    if j > 0 {
-        neighbors.push((i, j - 1));
-    }
-    if i + 1 < x {
-        neighbors.push((i + 1, j));
-    }
-    if j + 1 < y {
-        neighbors.push((i, j + 1));
-    }
-    neighbors
+    [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        .iter()
+        .map(|(dx, dy)| (i as isize + dx, j as isize + dy))
+        .filter(|&(i, j)| i >= 0 && j >= 0)
+        .map(|(i, j)| (i as usize, j as usize))
+        .filter(|&(i, j)| i < x && j < y)
+        .collect()
 }
