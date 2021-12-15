@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use itertools::Itertools;
-
 fn main() {
     let (mut polymer, rules) = include_str!("../input/14.txt")
         .split_once("\n\n")
@@ -11,7 +9,7 @@ fn main() {
                 .map(|line| {
                     line.split_once(" -> ")
                         .map(|(left, right)| {
-                            let c = left.chars().collect_vec();
+                            let c:Vec<_> = left.chars().collect();
                             ((c[0], c[1]), right.chars().next().unwrap())
                         })
                         .unwrap()
@@ -19,7 +17,7 @@ fn main() {
                 .collect();
             let polymer: HashMap<_, _> = polymer
                 .chars()
-                .collect_vec()
+                .collect::<Vec<_>>()
                 .windows(2)
                 .map(|x| ((x[0], x[1]), 1))
                 .collect();
