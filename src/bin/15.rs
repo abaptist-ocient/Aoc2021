@@ -1,9 +1,7 @@
-use comparator::collections::BinaryHeap;
-use comparator::{comparing, Comparator};
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 type Position = (usize, usize);
 type Val = (usize, usize);
-type State = (usize, Position);
 const REPEAT: usize = 5;
 
 fn main() {
@@ -30,18 +28,18 @@ fn main() {
     });
 
     // dijikstra's algo
-    let mut heap = BinaryHeap::with_comparator(comparing(|s: &State| s.0).reversed());
+    let mut heap = BinaryHeap::<Reverse<(usize, Position)>>::new();
     let max = (grid[0].len(), grid.len());
     heap.push(Default::default());
 
-    while let Some((cost, position)) = heap.pop() {
+    while let Some(Reverse((cost, position))) = heap.pop() {
         if cost <= grid[position.0][position.1].1 {
             for (i, j) in get_neighbors(position, max) {
                 let (edge, old_cost) = grid[i][j];
                 let next = (cost + edge, (i, j));
                 if next.0 < old_cost {
                     grid[i][j].1 = next.0;
-                    heap.push(next);
+                    heap.push(Reverse(next));
                 }
             }
         }

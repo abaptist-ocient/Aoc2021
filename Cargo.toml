@@ -8,4 +8,3 @@ edition = "2021"
 [dependencies]
 parse-display = "0.5.3"
 itertools = "0.10.3"
-comparator = "0.2.1"
