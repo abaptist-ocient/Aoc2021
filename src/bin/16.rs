@@ -5,112 +5,106 @@ fn main() {
         .flat_map(|c| {
             let n = c.to_digit(16).unwrap();
             (0..4).map(move |i| (1 & n >> (3 - i)) != 0)
-        })
-        .collect::<Vec<bool>>();
+        });
 
-    let mut m = Machine { ver_count: 0 };
-    let (val, _) = m.parse_type(&bits);
-    println!("part 1 {}, part 2 {}", m.ver_count, val);
+    let packet = parse_packet(&mut bits.collect::<Vec<_>>().into_iter());
+    println!("part 1 {}", packet.version());
+    println!("part 2 {}", packet.execute());
 }
 
-struct Machine {
-    ver_count: usize,
+struct Packet {
+    version: usize,
+    children: Vec<Packet>,
+    op: usize,
+    literal: Option<usize>,
 }
 
-impl Machine {
-    fn parse_type(&mut self, mut bits: &[bool]) -> (usize, usize) {
-        self.ver_count += to_usize(&bits[..3]);
-        let op = to_usize(&bits[3..6]);
-        bits = &bits[6..];
-        let (val, consumed) = if let 4 = op {
-            parse_num(bits)
-        } else {
-            let (values, consumed) = if bits[0] {
-                self.count_based_op(&bits[1..])
-            } else {
-                self.size_based_op(&bits[1..])
-            };
-            (apply(op, values), consumed + 1)
-        };
-        (val, consumed + 6)
+impl Packet {
+    fn version(&self) -> usize {
+        self.version
+            + self
+                .children
+                .iter()
+                .map(|child| child.version())
+                .sum::<usize>()
     }
 
-    fn count_based_op(&mut self, mut bits: &[bool]) -> (Vec<usize>, usize) {
-        let mut values = Vec::new();
-        let mut subops = to_usize(&bits[..11]);
-        bits = &bits[11..];
-        let mut consumed = 0;
-        while subops > 0 {
-            let (val, used_bits) = self.parse_type(bits);
-            bits = &bits[used_bits..];
-            consumed += used_bits;
-            subops -= 1;
-            values.push(val);
+    fn execute(&self) -> usize {
+        let ele: Vec<usize> = self.children.iter().map(|child| child.execute()).collect();
+        match self.op {
+            0 => ele.iter().sum(),
+            1 => ele.iter().product(),
+            2 => ele.into_iter().fold(usize::MAX, usize::min),
+            3 => ele.into_iter().fold(usize::MIN, usize::max),
+            4 => self.literal.unwrap(),
+            5 => get_val(ele[0] < ele[1]),
+            6 => get_val(ele[0] > ele[1]),
+            7 => get_val(ele[0] == ele[1]),
+            _ => unreachable!("{}", self.op),
         }
-        (values, 11 + consumed)
-    }
-
-    fn size_based_op(&mut self, mut bits: &[bool]) -> (Vec<usize>, usize) {
-        let mut values = Vec::new();
-        let sub_op_bytes = to_usize(&bits[..15]);
-        bits = &bits[15..];
-        let mut to_consume = sub_op_bytes;
-        while to_consume > 0 {
-            let (val, used_bits) = self.parse_type(bits);
-            bits = &bits[used_bits..];
-            to_consume -= used_bits;
-            values.push(val);
-        }
-        (values, 15 + sub_op_bytes)
     }
 }
 
-fn parse_num(mut bits: &[bool]) -> (usize, usize) {
-    let mut full: Vec<bool> = Vec::new();
-    let mut num_consumed = 0;
-    loop {
-        num_consumed += 5;
-        full.extend(&bits[1..5]);
-        if !bits[0] {
-            break;
-        };
-        bits = &bits[5..];
-    }
-    (to_usize(&full), num_consumed)
-}
-
-fn apply(functor: usize, values: Vec<usize>) -> usize {
-    if functor < 4 {
-        type ReduceFn = Box<dyn Fn(usize, &usize) -> usize>;
-        let (init, reduce): (usize, ReduceFn) = match functor {
-            0 => (0, Box::new(|init, val| init + val)),
-            1 => (1, Box::new(|init, val| init * val)),
-            2 => (usize::MAX, Box::new(|init, val| usize::min(init, *val))),
-            3 => (usize::MIN, Box::new(|init, val| usize::max(init, *val))),
-            _ => unreachable!(),
-        };
-        values.iter().fold(init, reduce.as_ref())
+fn get_val(b: bool) -> usize {
+    if b {
+        1
     } else {
-        type CompareFn = Box<dyn Fn(usize, usize) -> bool>;
-        let compare: CompareFn = match functor {
-            5 => Box::new(|v1, v2| v1 > v2),
-            6 => Box::new(|v1, v2| v1 < v2),
-            7 => Box::new(|v1, v2| v1 == v2),
-            _ => unreachable!(),
-        };
-        if compare(values[0], values[1]) {
-            1
-        } else {
-            0
-        }
+        0
     }
 }
 
-fn to_usize(full: &[bool]) -> usize {
-    let mut result: usize = 0;
-    for b in full {
-        result <<= 1;
-        result |= if *b { 1 } else { 0 };
+fn parse_packet<I>(bits: &mut I) -> Packet
+where
+    I: ExactSizeIterator<Item = bool>,
+{
+    let version = to_usize(bits.take(3).collect());
+    let op = to_usize(bits.take(3).collect());
+    let literal;
+    let children;
+    if op == 4 {
+        // handle literal special
+        literal = Some(parse_num(bits));
+        children = Vec::new();
+    } else {
+        literal = None;
+        children = if bits.next().unwrap() {
+            let num_ops = to_usize(bits.take(11).collect());
+            (0..num_ops).map(|_| parse_packet(bits)).collect()
+        } else {
+            let remainder = bits.len() - to_usize(bits.take(15).collect());
+            (0..)
+                .map_while(|_| {
+                    if remainder < bits.len() {
+                        Some(parse_packet(bits))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        }
     }
-    result
+    Packet {
+        version,
+        children,
+        op,
+        literal,
+    }
+}
+
+fn parse_num<I>(bits: &mut I) -> usize
+where
+    I: ExactSizeIterator<Item = bool>,
+{
+    let mut full: Vec<bool> = Vec::new();
+    let mut done = false;
+    while !done {
+        done = !bits.next().unwrap();
+        full.extend(bits.take(4));
+    }
+    to_usize(full)
+}
+
+fn to_usize(full: Vec<bool>) -> usize {
+    full.into_iter()
+        .fold(0, |init, next| (init << 1) | if next { 1 } else { 0 })
 }
