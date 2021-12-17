@@ -1,54 +1,63 @@
 use bitvec::prelude::*;
+
 fn main() {
     let line = include_str!("../input/16.txt").lines().next().unwrap();
     let hex = hex::decode(line).unwrap();
     let bits = BitVec::<Msb0, u8>::from_slice(&hex).unwrap();
-    let mut ver_count = 0;
-    let (val, _) = parse_type(&mut ver_count, &bits);
-    println!("part 1 {}, part 2 {}", ver_count, val);
+    let mut m = Machine { ver_count: 0 };
+    let (val, _) = m.parse_type(&bits);
+    println!("part 1 {}, part 2 {}", m.ver_count, val);
 }
 
-fn parse_type(ver_count: &mut usize, mut bits: &BitSlice<Msb0, u8>) -> (usize, usize) {
-    let p_version = to_usize(&bits[..3]); // 110 = 6
-    *ver_count += p_version;
-    let p_type = to_usize(&bits[3..6]);
-    bits = &bits[6..];
-    let (val, consumed) = match p_type {
-        4 => parse_num(bits),
-        op => parse_operator(ver_count, op, bits),
-    };
-    (val, consumed + 6)
+struct Machine {
+    ver_count: usize,
 }
 
-fn parse_operator(
-    ver_count: &mut usize,
-    op: usize,
-    mut bits: &BitSlice<Msb0, u8>,
-) -> (usize, usize) {
-    let mut values = Vec::new();
-    if bits[0] {
-        let mut subops = to_usize(&bits[1..12]);
-        bits = &bits[12..];
+impl Machine {
+    fn parse_type(&mut self, mut bits: &BitSlice<Msb0, u8>) -> (usize, usize) {
+        self.ver_count += to_usize(&bits[..3]);
+        let op = to_usize(&bits[3..6]);
+        bits = &bits[6..];
+        let (val, consumed) = if let 4 = op {
+            parse_num(bits)
+        } else {
+            let (values, consumed) = if bits[0] {
+                self.count_based_op(&bits[1..])
+            } else {
+                self.size_based_op(&bits[1..])
+            };
+            (apply(op, values), consumed + 1)
+        };
+        (val, consumed + 6)
+    }
+
+    fn count_based_op(&mut self, mut bits: &BitSlice<Msb0, u8>) -> (Vec<usize>, usize) {
+        let mut values = Vec::new();
+        let mut subops = to_usize(&bits[..11]);
+        bits = &bits[11..];
         let mut consumed = 0;
         while subops > 0 {
-            let (val, used_bits) = parse_type(ver_count, bits);
+            let (val, used_bits) = self.parse_type(bits);
             bits = &bits[used_bits..];
             consumed += used_bits;
             subops -= 1;
             values.push(val);
         }
-        (apply(op, values), 12 + consumed)
-    } else {
-        let sub_op_bytes = to_usize(&bits[1..16]);
-        bits = &bits[16..];
+        (values, 11 + consumed)
+    }
+
+    fn size_based_op(&mut self, mut bits: &BitSlice<Msb0, u8>) -> (Vec<usize>, usize) {
+        let mut values = Vec::new();
+        let sub_op_bytes = to_usize(&bits[..15]);
+        bits = &bits[15..];
         let mut to_consume = sub_op_bytes;
         while to_consume > 0 {
-            let (val, used_bits) = parse_type(ver_count, bits);
+            let (val, used_bits) = self.parse_type(bits);
             bits = &bits[used_bits..];
             to_consume -= used_bits;
             values.push(val);
         }
-        (apply(op, values), 16 + sub_op_bytes)
+        (values, 15 + sub_op_bytes)
     }
 }
 
@@ -67,15 +76,6 @@ fn parse_num(mut bits: &BitSlice<Msb0, u8>) -> (usize, usize) {
         bits = &bits[5..];
     }
     (to_usize(&full), num_consumed)
-}
-
-fn to_usize(full: &BitSlice<Msb0, u8>) -> usize {
-    let mut result: usize = 0;
-    for b in full {
-        result <<= 1;
-        result |= if *b { 1 } else { 0 };
-    }
-    result
 }
 
 fn apply(functor: usize, values: Vec<usize>) -> usize {
@@ -103,4 +103,13 @@ fn apply(functor: usize, values: Vec<usize>) -> usize {
             0
         }
     }
+}
+
+fn to_usize(full: &BitSlice<Msb0, u8>) -> usize {
+    let mut result: usize = 0;
+    for b in full {
+        result <<= 1;
+        result |= if *b { 1 } else { 0 };
+    }
+    result
 }
