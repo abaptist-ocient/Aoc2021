@@ -1,9 +1,13 @@
-use bitvec::prelude::*;
-
 fn main() {
-    let line = include_str!("../input/16.txt").lines().next().unwrap();
-    let hex = hex::decode(line).unwrap();
-    let bits = BitVec::<Msb0, u8>::from_slice(&hex).unwrap();
+    let bits = include_str!("../input/16.txt")
+        .trim()
+        .chars()
+        .flat_map(|c| {
+            let n = c.to_digit(16).unwrap();
+            (0..4).map(move |i| (1 & n >> (3 - i)) != 0)
+        })
+        .collect::<Vec<bool>>();
+
     let mut m = Machine { ver_count: 0 };
     let (val, _) = m.parse_type(&bits);
     println!("part 1 {}, part 2 {}", m.ver_count, val);
@@ -14,7 +18,7 @@ struct Machine {
 }
 
 impl Machine {
-    fn parse_type(&mut self, mut bits: &BitSlice<Msb0, u8>) -> (usize, usize) {
+    fn parse_type(&mut self, mut bits: &[bool]) -> (usize, usize) {
         self.ver_count += to_usize(&bits[..3]);
         let op = to_usize(&bits[3..6]);
         bits = &bits[6..];
@@ -31,7 +35,7 @@ impl Machine {
         (val, consumed + 6)
     }
 
-    fn count_based_op(&mut self, mut bits: &BitSlice<Msb0, u8>) -> (Vec<usize>, usize) {
+    fn count_based_op(&mut self, mut bits: &[bool]) -> (Vec<usize>, usize) {
         let mut values = Vec::new();
         let mut subops = to_usize(&bits[..11]);
         bits = &bits[11..];
@@ -46,7 +50,7 @@ impl Machine {
         (values, 11 + consumed)
     }
 
-    fn size_based_op(&mut self, mut bits: &BitSlice<Msb0, u8>) -> (Vec<usize>, usize) {
+    fn size_based_op(&mut self, mut bits: &[bool]) -> (Vec<usize>, usize) {
         let mut values = Vec::new();
         let sub_op_bytes = to_usize(&bits[..15]);
         bits = &bits[15..];
@@ -61,15 +65,12 @@ impl Machine {
     }
 }
 
-fn parse_num(mut bits: &BitSlice<Msb0, u8>) -> (usize, usize) {
-    let mut full: BitVec<Msb0, u8> = BitVec::new();
+fn parse_num(mut bits: &[bool]) -> (usize, usize) {
+    let mut full: Vec<bool> = Vec::new();
     let mut num_consumed = 0;
     loop {
         num_consumed += 5;
-        let num = &bits[1..5];
-        let new_len = full.len() + 4;
-        full.resize(new_len, false);
-        full[new_len - 4..new_len].clone_from_bitslice(num);
+        full.extend(&bits[1..5]);
         if !bits[0] {
             break;
         };
@@ -105,7 +106,7 @@ fn apply(functor: usize, values: Vec<usize>) -> usize {
     }
 }
 
-fn to_usize(full: &BitSlice<Msb0, u8>) -> usize {
+fn to_usize(full: &[bool]) -> usize {
     let mut result: usize = 0;
     for b in full {
         result <<= 1;
