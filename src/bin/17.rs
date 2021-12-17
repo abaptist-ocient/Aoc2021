@@ -3,6 +3,10 @@ use std::{cmp::max, ops::RangeInclusive};
 const X_RANGE: RangeInclusive<isize> = 207..=263;
 const Y_RANGE: RangeInclusive<isize> = -115..=-63;
 fn main() {
+    println!(
+        "part 1 {:?}",
+        (Y_RANGE.min().unwrap() * (Y_RANGE.min().unwrap() + 1)) / 2
+    );
     let count = (0..=X_RANGE.max().unwrap())
         .filter(|x| can_hit_x(*x))
         .flat_map(|x| {
@@ -10,7 +14,7 @@ fn main() {
                 .filter(move |y: &isize| hits(x, *y))
         })
         .count();
-    println!("{:?}", count);
+    println!("part 2 {:?}", count);
 }
 
 fn hits(mut x_vel: isize, mut y_vel: isize) -> bool {
