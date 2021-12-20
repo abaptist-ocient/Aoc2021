@@ -14,7 +14,7 @@ enum Value {
 
 #[derive(Debug)]
 enum Explosion {
-    NoExplosion,
+    None,
     Exploded((u32, u32)),
     Propogate((u32, u32)),
 }
@@ -78,7 +78,7 @@ impl Pair {
 
     fn process(&mut self) {
         loop {
-            if let NoExplosion = self.explode(0) {
+            if let None = self.explode(0) {
                 if !self.split() {
                     break;
                 }
@@ -137,7 +137,7 @@ impl Pair {
                     self.propogate_left(a, b)
                 }
                 Propogate((a, b)) => self.propogate_left(a, b),
-                NoExplosion => self.explode_right(depth),
+                None => self.explode_right(depth),
             }
         } else {
             self.explode_right(depth)
@@ -152,10 +152,10 @@ impl Pair {
                     self.propogate_right(a, b)
                 }
                 Propogate((a, b)) => self.propogate_right(a, b),
-                NoExplosion => NoExplosion,
+                None => None,
             }
         } else {
-            NoExplosion
+            None
         }
     }
 
