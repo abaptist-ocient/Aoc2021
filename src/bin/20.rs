@@ -1,7 +1,6 @@
 #![feature(destructuring_assignment)]
-use std::collections::HashSet;
-
 use itertools::Itertools;
+use std::{collections::HashSet, str::Lines};
 
 struct Board {
     board: HashSet<(isize, isize)>,
@@ -11,7 +10,16 @@ struct Board {
 }
 
 impl Board {
-    fn new(board: HashSet<(isize, isize)>, edge: bool) -> Self {
+    fn new(input: Lines, edge: bool) -> Self {
+        let board: HashSet<(isize, isize)> = input
+            .enumerate()
+            .flat_map(|(y, line)| {
+                line.chars()
+                    .enumerate()
+                    .filter(|(_, c)| *c == '#')
+                    .map(move |(x, _)| (x as isize, y as isize))
+            })
+            .collect();
         let mut me = Board {
             board,
             edge,
@@ -21,7 +29,7 @@ impl Board {
         me.update_bounds();
         me
     }
-    fn set_board(&mut self, new_board: HashSet<(isize, isize)>) {
+    fn set_data(&mut self, new_board: HashSet<(isize, isize)>) {
         self.board = new_board;
         self.update_bounds();
     }
@@ -38,15 +46,6 @@ impl Board {
         );
     }
 
-    // fn print_board(&self, iter: usize) {
-    //     (self.y_bounds.0 - 2..=self.y_bounds.1 + 2).for_each(|y| {
-    //         (self.x_bounds.0 - 2..=self.x_bounds.1 + 2).for_each(|x| {
-    //             print!("{}", if self.get_value(x, y, iter) { "#" } else { "." });
-    //         });
-    //         println!();
-    //     })
-    // }
-
     fn get_value(&self, x: isize, y: isize, iter: usize) -> bool {
         if x < self.x_bounds.0 || x > self.x_bounds.1 || y < self.y_bounds.0 || y > self.y_bounds.1
         {
@@ -60,21 +59,11 @@ impl Board {
 fn main() {
     let mut input = include_str!("../input/20.txt").lines();
     let mapping: Vec<_> = input.next().unwrap().chars().map(|c| c == '#').collect();
-
-    input.next().unwrap();
-    let board: HashSet<(isize, isize)> = input
-        .enumerate()
-        .flat_map(|(y, line)| {
-            line.chars()
-                .enumerate()
-                .filter(|(_, c)| *c == '#')
-                .map(move |(x, _)| (x as isize, y as isize))
-        })
-        .collect();
-    let mut board = Board::new(board, mapping[0]);
+    input.next().unwrap(); // strip off blank line
+    let mut board = Board::new(input, mapping[0]);
 
     (0..50).for_each(|iter| {
-        board.set_board(
+        board.set_data(
             (board.x_bounds.0 - 1..=board.x_bounds.1 + 1)
                 .flat_map(|x| {
                     (board.y_bounds.0 - 1..=board.y_bounds.1 + 1)
@@ -94,6 +83,6 @@ fn main() {
                 })
                 .collect(),
         );
+        println!("{}: {}", iter, board.board.len());
     });
-    println!("{}", board.board.len());
 }

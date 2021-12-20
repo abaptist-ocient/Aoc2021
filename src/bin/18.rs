@@ -12,7 +12,7 @@ enum Value {
     Digit(u32),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Explosion {
     None,
     Exploded((u32, u32)),
@@ -48,7 +48,8 @@ impl Add for Pair {
             left: More(Box::new(self)),
             right: More(Box::new(other)),
         };
-        p.process();
+            while p.explode(0) != None || p.split() {
+            }
         p
     }
 }
@@ -73,16 +74,6 @@ impl Pair {
             *r
         } else {
             unreachable!("Bad stack {:?}", stack);
-        }
-    }
-
-    fn process(&mut self) {
-        loop {
-            if let None = self.explode(0) {
-                if !self.split() {
-                    break;
-                }
-            }
         }
     }
 
@@ -189,25 +180,21 @@ impl Pair {
 
     fn explode_me(&mut self) -> Explosion {
         if let (Digit(left), Digit(right)) = (&mut self.left, &mut self.right) {
-            let old = (*left, *right);
-            *left = 0;
-            *right = 0;
-            Exploded(old)
+            Exploded((*left, *right))
         } else {
             unreachable!("Too deep already... {}", self);
         }
     }
 
     fn magnitude(self) -> u32 {
-        let left = match self.left {
+        (match self.left {
             More(node) => node.magnitude(),
             Digit(num) => num,
-        } * 3;
-        let right = match self.right {
-            More(node) => node.magnitude(),
-            Digit(num) => num,
-        } * 2;
-        right + left
+        }) * 3
+            + (match self.right {
+                More(node) => node.magnitude(),
+                Digit(num) => num,
+            }) * 2
     }
 }
 
