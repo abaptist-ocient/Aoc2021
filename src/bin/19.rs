@@ -1,21 +1,22 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     ops::{Add, Sub},
 };
-
 use itertools::Itertools;
 
 type PointIndexPair<'a> = (&'a (usize, usize), &'a (usize, usize));
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Scanner {
     points: Vec<Point>,
+    translation: Point,
 }
 
 impl FromIterator<Point> for Scanner {
     fn from_iter<T: IntoIterator<Item = Point>>(iter: T) -> Self {
         Scanner {
             points: iter.into_iter().collect(),
+            translation: Point { x: 0, y: 0, z: 0 },
         }
     }
 }
@@ -30,8 +31,9 @@ impl Scanner {
                 self.points
                     .iter()
                     .enumerate()
-                    .filter(move |(n2, _)| n1 < *n2)
-                    .map(move |(n2, second)| (first.distance_from(second), (n1, n2)))
+                    .filter(|(n2, _)| n1 < *n2)
+                    .map(|(n2, second)| (first.distance_from(second), (n1, n2)))
+                    .collect_vec()
             })
             .collect();
         all_dist.sort_unstable();
@@ -47,11 +49,12 @@ impl Scanner {
     }
 
     fn apply_translation(&mut self, trans: &Point) {
+        self.translation = trans.clone();
         self.points = self.points.iter().map(|p| p + trans).collect();
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
 struct Point {
     x: isize,
     y: isize,
@@ -101,6 +104,9 @@ impl Point {
         x_diff * x_diff + y_diff * y_diff + z_diff * z_diff
     }
 
+    fn manhatten(&self) -> isize {
+        self.x.abs() + self.y.abs() + self.z.abs()
+    }
     fn apply_permutation(&self, perm: &Point) -> Self {
         Point {
             x: self.get_digit(perm.x),
@@ -120,7 +126,7 @@ impl Point {
     }
 }
 
-// 1 = x, 2 = y, 3 = z
+// return 48 permutations -  1 = x, 2 = y, 3 = z
 fn get_permutations() -> Vec<Point> {
     [1, 2, 3]
         .iter()
@@ -145,46 +151,88 @@ fn main() {
             dists
                 .iter()
                 .enumerate()
-                .filter(move |(n2, _)| n1 != *n2)
-                .map(move |(n2, second)| ((n1, n2), compute_overlaps(first, second)))
-                .filter(move |x| x.1.len() >= 66)
+                .filter(|(n2, _)| n1 != *n2)
+                .map(|(n2, second)| ((n1, n2), compute_overlaps(first, second)))
+                .filter(|x| x.1.len() >= 66)
                 .collect_vec()
         })
         .collect_vec();
     overlaps.sort_unstable();
 
     let mut completed = vec![false; scanners.len()];
+    // can set reference frame anywhere - choose 0
     completed[0] = true;
 
-    count_points(&scanners);
     loop {
         let finish = overlaps
             .iter()
             .filter(|overlap| completed[overlap.0 .0] && !completed[overlap.0 .1])
             .map(|overlap| {
-                let overlap_points = &overlap.1;
-                let rotation = find_rotation(
-                    &scanners[overlap.0 .0],
-                    &scanners[overlap.0 .1],
-                    overlap_points,
-                );
-                scanners[overlap.0 .1].apply_permutation(&rotation);
-                let translation = &scanners[overlap.0 .0].points[overlap_points[0].0 .0]
-                    - &scanners[overlap.0 .1].points[overlap_points[0].1 .0];
-                scanners[overlap.0 .1].apply_translation(&translation);
+                if !completed[overlap.0 .1] {
+                    let overlap_points = &overlap.1;
+
+                    let rotations = find_rotation(
+                        &scanners[overlap.0 .0],
+                        &scanners[overlap.0 .1],
+                        overlap_points,
+                    );
+                    // always get 2, one is the "mirror" which won't be very effective - but hard to detect which is which
+                    assert!(rotations.len() == 2);
+                    let orig = scanners[overlap.0 .1].points.clone();
+
+                    for rotation in rotations {
+                        scanners[overlap.0 .1].apply_permutation(&rotation);
+
+                        // find the best translation
+                        let mut map: HashMap<Point, usize> = HashMap::new();
+                        overlap_points.iter().for_each(|point| {
+                            let translation = &scanners[overlap.0 .0].points[point.0 .0]
+                                - &scanners[overlap.0 .1].points[point.1 .0];
+                            *map.entry(translation).or_default() += 1;
+                        });
+                        let map: HashMap<_, _> =
+                            map.iter().filter(|(_, &count)| count > 12).collect();
+                        if map.is_empty() {
+                            // choose the mirror translation - try again
+                            scanners[overlap.0 .1].points = orig.clone();
+                            continue;
+                        }
+                        let translation = *map.keys().next().unwrap();
+                        let origin = Point { x: 0, y: 0, z: 0 };
+                        // useless case - we try and do the same scanner twice in one iteration
+                        if translation != &origin {
+                            scanners[overlap.0 .1].apply_translation(translation);
+                            break;
+                        }
+                    }
+                }
                 overlap.0 .1
             })
             .collect_vec();
         finish.iter().for_each(|&x| completed[x] = true);
-        count_points(&scanners);
         if finish.is_empty() {
             break;
         }
     }
+
+    println!("Part 1 {}", count_points(&scanners));
+
+    let max = scanners
+        .iter()
+        .map(|el1| {
+            scanners
+                .iter()
+                .map(|el2| (&el1.translation - &el2.translation).manhatten())
+                .max()
+                .unwrap()
+        })
+        .max()
+        .unwrap();
+    println!("Part 2 {}", max);
 }
 
 fn parse_input() -> Vec<Scanner> {
-    include_str!("../input/test.txt")
+    include_str!("../input/19.txt")
         .split("\n\n")
         .map(|scanner| {
             scanner
@@ -201,40 +249,38 @@ fn parse_input() -> Vec<Scanner> {
         .collect::<Vec<_>>()
 }
 
-fn count_points(scanners: &[Scanner]) {
+fn count_points(scanners: &[Scanner]) -> usize {
     let mut all_points = HashSet::new();
     for scanner in scanners {
         for p in scanner.points.iter() {
             all_points.insert(p);
         }
     }
-    let mut all_points = all_points.into_iter().collect_vec();
-    all_points.sort_unstable();
-    // for point in &all_points {
-    //     println!("{:?}", point);
-    // }
-    println!("{}", all_points.len());
+    all_points.into_iter().collect_vec().len()
 }
 
 fn find_rotation(
     scanner0: &Scanner,
     scanner1: &Scanner,
     overlap_points: &[PointIndexPair],
-) -> Point {
-    for points in overlap_points.iter().rev() {
-        let source = &scanner1.points[points.1 .0];
-        let dest = &scanner1.points[points.1 .1];
-        let goal = &scanner0.points[points.0 .0] - &scanner0.points[points.0 .1];
-        let valid_perm = get_permutations()
-            .into_iter()
-            .filter(|p| &source.apply_permutation(p) - &dest.apply_permutation(p) == goal)
-            .collect_vec();
-        println!("{:?}", valid_perm);
-        // if valid_perm.len() == 1 {
-        //     return valid_perm.into_iter().next().unwrap();
-        // }
-    }
-    unreachable!();
+) -> HashSet<Point> {
+    overlap_points
+        .iter()
+        .filter_map(|points| {
+            let source = &scanner1.points[points.1 .0];
+            let dest = &scanner1.points[points.1 .1];
+            let goal = &scanner0.points[points.0 .0] - &scanner0.points[points.0 .1];
+            let valid_perm = get_permutations()
+                .into_iter()
+                .filter(|p| &source.apply_permutation(p) - &dest.apply_permutation(p) == goal)
+                .collect_vec();
+            if valid_perm.len() == 1 {
+                Some(valid_perm.into_iter().next().unwrap())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 // dists that are identical between scanners
@@ -247,8 +293,9 @@ fn compute_overlaps<'a>(
         .flat_map(|(dist1, points1)| {
             second
                 .iter()
-                .filter(move |(dist2, (_, _))| dist1 == dist2)
-                .map(move |(_, points2)| (points1, points2))
+                .filter(|(dist2, (_, _))| dist1 == dist2)
+                .map(|(_, points2)| (points1, points2))
+                .collect_vec()
         })
         .collect()
 }
