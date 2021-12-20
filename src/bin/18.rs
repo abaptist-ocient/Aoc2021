@@ -8,7 +8,7 @@ use Value::*;
 
 #[derive(Debug, Clone)]
 enum Value {
-    More(Box<Pair>),
+    More(Pair),
     Digit(u32),
 }
 
@@ -21,8 +21,8 @@ enum Explosion {
 
 #[derive(Debug, Clone)]
 struct Pair {
-    left: Value,
-    right: Value,
+    left: Box<Value>,
+    right: Box<Value>,
 }
 
 impl Display for Value {
@@ -45,11 +45,10 @@ impl Add for Pair {
 
     fn add(self, other: Self) -> Self {
         let mut p = Pair {
-            left: More(Box::new(self)),
-            right: More(Box::new(other)),
+            left: Box::new(More(self)),
+            right: Box::new(More(other)),
         };
-            while p.explode(0) != None || p.split() {
-            }
+        while p.explode(0) != None || p.split() {}
         p
     }
 }
@@ -60,9 +59,9 @@ impl Pair {
             match c {
                 '0'..='9' => stack.push(Digit(c.to_digit(10).unwrap())),
                 ']' => {
-                    let right = stack.pop().unwrap();
-                    let left = stack.pop().unwrap();
-                    stack.push(More(Box::new(Pair { left, right })));
+                    let right = Box::new(stack.pop().unwrap());
+                    let left = Box::new(stack.pop().unwrap());
+                    stack.push(More(Pair { left, right }));
                 }
                 '[' | ',' => {} // ignore
                 _ => unreachable!("{}", c),
@@ -71,24 +70,24 @@ impl Pair {
         });
         let stack = stack.into_iter().next().unwrap();
         if let More(r) = stack {
-            *r
+            r
         } else {
             unreachable!("Bad stack {:?}", stack);
         }
     }
 
     fn split(&mut self) -> bool {
-        match &mut self.left {
+        match &mut *self.left {
             Digit(n) => {
                 if *n > 9 {
-                    self.left = Pair::create_split(*n);
+                    *self.left = Pair::create_split(*n);
                     true
                 } else {
                     self.split_right()
                 }
             }
             More(value) => {
-                if Pair::split(value.as_mut()) {
+                if value.split() {
                     true
                 } else {
                     self.split_right()
@@ -98,33 +97,33 @@ impl Pair {
     }
 
     fn create_split(n: u32) -> Value {
-        More(Box::new(Pair {
-            left: Digit(n / 2),
-            right: Digit((n + 1) / 2),
-        }))
+        More(Pair {
+            left: Box::new(Digit(n / 2)),
+            right: Box::new(Digit((n + 1) / 2)),
+        })
     }
 
     fn split_right(&mut self) -> bool {
-        match &mut self.right {
+        match &mut *self.right {
             Digit(n) => {
                 if *n > 9 {
-                    self.right = Pair::create_split(*n);
+                    *self.right = Pair::create_split(*n);
                     true
                 } else {
                     false
                 }
             }
-            More(value) => Pair::split(value.as_mut()),
+            More(value) => value.split(),
         }
     }
 
     fn explode(&mut self, depth: u32) -> Explosion {
         if depth == 4 {
             self.explode_me()
-        } else if let More(value) = &mut self.left {
-            match Pair::explode(value.as_mut(), depth + 1) {
+        } else if let More(value) = &mut *self.left {
+            match value.explode(depth + 1) {
                 Exploded((a, b)) => {
-                    self.left = Digit(0);
+                    *self.left = Digit(0);
                     self.propogate_left(a, b)
                 }
                 Propogate((a, b)) => self.propogate_left(a, b),
@@ -136,10 +135,10 @@ impl Pair {
     }
 
     fn explode_right(&mut self, depth: u32) -> Explosion {
-        if let More(value) = &mut self.right {
-            match Pair::explode(value.as_mut(), depth + 1) {
+        if let More(value) = &mut *self.right {
+            match value.explode(depth + 1) {
                 Exploded((a, b)) => {
-                    self.right = Digit(0);
+                    *self.right = Digit(0);
                     self.propogate_right(a, b)
                 }
                 Propogate((a, b)) => self.propogate_right(a, b),
@@ -151,35 +150,35 @@ impl Pair {
     }
 
     fn propogate_left(&mut self, a: u32, b: u32) -> Explosion {
-        match &mut self.right {
-            More(node) => node.as_mut().add_leftmost(b),
+        match &mut *self.right {
+            More(node) => node.add_leftmost(b),
             Digit(num) => *num += b,
         }
         Propogate((a, 0))
     }
     fn add_leftmost(&mut self, val: u32) {
-        match &mut self.left {
-            More(node) => node.as_mut().add_leftmost(val),
+        match &mut *self.left {
+            More(node) => node.add_leftmost(val),
             Digit(num) => *num += val,
         }
     }
 
     fn propogate_right(&mut self, a: u32, b: u32) -> Explosion {
-        match &mut self.left {
-            More(node) => node.as_mut().add_rightmost(a),
+        match &mut *self.left {
+            More(node) => node.add_rightmost(a),
             Digit(num) => *num += a,
         }
         Propogate((0, b))
     }
     fn add_rightmost(&mut self, val: u32) {
-        match &mut self.right {
-            More(node) => node.as_mut().add_rightmost(val),
+        match &mut *self.right {
+            More(node) => node.add_rightmost(val),
             Digit(num) => *num += val,
         }
     }
 
     fn explode_me(&mut self) -> Explosion {
-        if let (Digit(left), Digit(right)) = (&mut self.left, &mut self.right) {
+        if let (Digit(left), Digit(right)) = (&mut *self.left, &mut *self.right) {
             Exploded((*left, *right))
         } else {
             unreachable!("Too deep already... {}", self);
@@ -187,11 +186,11 @@ impl Pair {
     }
 
     fn magnitude(self) -> u32 {
-        (match self.left {
+        (match *self.left {
             More(node) => node.magnitude(),
             Digit(num) => num,
         }) * 3
-            + (match self.right {
+            + (match *self.right {
                 More(node) => node.magnitude(),
                 Digit(num) => num,
             }) * 2
