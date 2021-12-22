@@ -7,7 +7,7 @@ use std::collections::BinaryHeap;
 use parse_display::{Display, FromStr};
 use State::*;
 
-#[derive(Display, FromStr, Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Display, FromStr, Copy, Clone, PartialEq, Eq)]
 enum State {
     #[display("on")]
     On,
@@ -15,7 +15,7 @@ enum State {
     Off,
 }
 
-#[derive(Display, FromStr, Debug, Hash, PartialEq, Eq, Clone)]
+#[derive(Display, FromStr, PartialEq, Eq, Clone)]
 #[display("{state} x={min_x}..{max_x},y={min_y}..{max_y},z={min_z}..{max_z}")]
 #[from_str(default_fields("order"))]
 struct Cube {
@@ -48,7 +48,7 @@ impl Ord for Cube {
 }
 
 impl Cube {
-    fn fix_high_low(self) -> Self {
+    fn fix_high_low(self, order: usize) -> Self {
         Cube {
             state: self.state,
             min_x: min(self.min_x, self.max_x),
@@ -57,7 +57,7 @@ impl Cube {
             max_y: max(self.min_y, self.max_y),
             min_z: min(self.min_z, self.max_z),
             max_z: max(self.min_z, self.max_z),
-            order: self.order,
+            order,
         }
     }
 
@@ -193,47 +193,33 @@ const INTERIOR: Cube = Cube {
 };
 
 fn main() {
-    let mut cubes: Vec<Cube> = include_str!("../input/22.txt")
+    let mut cubes: BinaryHeap<Cube> = include_str!("../input/22.txt")
         .lines()
-        .map(|line| line.parse::<Cube>().unwrap().fix_high_low())
+        .enumerate()
+        .map(|(order, line)| line.parse::<Cube>().unwrap().fix_high_low(order))
+        // comment out this line for part 2
+        .filter(|cube| cube.intersects(&INTERIOR))
         .collect();
 
-    for (order, cube) in cubes.iter_mut().enumerate() {
-        cube.order = order;
-    }
-    let mut cubes: BinaryHeap<_> = cubes
-        .into_iter()
-        // comment line for part 2
-         .filter(|cube| cube.intersects(&INTERIOR))
-        .collect();
-
-    let mut non_overlapping_cubes = Vec::new();
-    loop {
-        let top_cube = cubes.pop();
-        if let Some(top_cube) = top_cube {
-            let mut added_cubes = Vec::new();
-            cubes.retain(|cube| {
-                if top_cube.intersects(cube) {
-                    let mut splits = top_cube.split_cube(cube);
-                    added_cubes.append(&mut splits);
-                    false
-                } else {
-                    true
-                }
-            });
-            cubes.extend(added_cubes.into_iter());
-            non_overlapping_cubes.push(top_cube);
-        } else {
-            break;
+    let mut final_cubes = Vec::new();
+    while let Some(top_cube) = cubes.pop() {
+        let mut added_cubes = Vec::new();
+        // remove all the overlapping cube "parts"
+        // would be cleaner once https://github.com/rust-lang/rfcs/issues/2140 is implemented
+        cubes.retain(|cube| {
+            if top_cube.intersects(cube) {
+                added_cubes.extend(top_cube.split_cube(cube).into_iter());
+                false
+            } else {
+                true
+            }
+        });
+        cubes.extend(added_cubes.into_iter());
+        if top_cube.state == On {
+            final_cubes.push(top_cube);
         }
     }
-    let total_size: isize = non_overlapping_cubes
-        .into_iter()
-        .filter(|cube| cube.state == State::On)
-        .map(|cube| cube.size())
-        .sum();
-
-    println!("total_size {}", total_size);
+    println!("{}", final_cubes.iter().map(Cube::size).sum::<isize>());
 }
 
 #[cfg(test)]
