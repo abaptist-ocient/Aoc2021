@@ -1,5 +1,5 @@
 use std::{
-    collections::{BinaryHeap, HashSet},
+    collections::{BinaryHeap, HashMap},
     fmt::{Display, Formatter},
     hash::Hash,
 };
@@ -42,29 +42,48 @@ impl Display for Board {
 *{}{}{}{}{}{}{}{}{}{}{}*
 ***{}*{}*{}*{}***
   *{}*{}*{}*{}*
+  *{}*{}*{}*{}*
+  *{}*{}*{}*{}*
   *********
 Cost: {}"#,
-            self.p[0],
-            self.p[1],
-            self.p[2],
-            self.p[3],
-            self.p[4],
-            self.p[5],
-            self.p[6],
-            self.p[7],
-            self.p[8],
-            self.p[9],
-            self.p[10],
-            self.p[11],
-            self.p[12],
-            self.p[13],
-            self.p[14],
-            self.p[15],
-            self.p[16],
-            self.p[17],
-            self.p[18],
+            c(self.p[0]),
+            c(self.p[1]),
+            c(self.p[2]),
+            c(self.p[3]),
+            c(self.p[4]),
+            c(self.p[5]),
+            c(self.p[6]),
+            c(self.p[7]),
+            c(self.p[8]),
+            c(self.p[9]),
+            c(self.p[10]),
+            c(self.p[11]),
+            c(self.p[12]),
+            c(self.p[13]),
+            c(self.p[14]),
+            c(self.p[15]),
+            c(self.p[16]),
+            c(self.p[17]),
+            c(self.p[18]),
+            c(self.p[19]),
+            c(self.p[20]),
+            c(self.p[21]),
+            c(self.p[22]),
+            c(self.p[23]),
+            c(self.p[24]),
+            c(self.p[25]),
+            c(self.p[26]),
             self.score,
         )
+    }
+}
+fn c(val: u8) -> char {
+    match val {
+        1 => 'A',
+        2 => 'B',
+        3 => 'C',
+        4 => 'D',
+        _ => ' ',
     }
 }
 
@@ -72,15 +91,18 @@ Cost: {}"#,
 // *01-23-45-67-8910*
 //   *11*12*13*14*
 //   *15*16*17*18*
+//   *19*20*21*22*
+//   *23*24*25*26*
 //   *************
 
 impl Board {
     fn get_moves(&self) -> Vec<Self> {
-        let mut moves = Vec::new();
-        for (pos, _) in self.p.iter().enumerate().filter(|(_, &val)| val > 0) {
-            moves.extend(self.move_from(pos));
-        }
-        moves
+        self.p
+            .iter()
+            .enumerate()
+            .filter(|(_, &val)| val > 0)
+            .flat_map(|(pos, _)| self.move_from(pos))
+            .collect()
     }
     fn is_solved(&self) -> bool {
         for x in 0..=10 {
@@ -88,14 +110,14 @@ impl Board {
                 return false;
             }
         }
-        self.p[11] == 1
-            && self.p[15] == 1
-            && self.p[12] == 2
-            && self.p[16] == 2
-            && self.p[13] == 3
-            && self.p[17] == 3
-            && self.p[14] == 4
-            && self.p[18] == 4
+        for (num, &col) in DROPS.iter().enumerate() {
+            for &row in &col[1..] {
+                if self.p[row] != num as u8 + 1 {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     fn move_from(&self, pos: usize) -> Vec<Board> {
@@ -207,6 +229,8 @@ impl Board {
             for &y in drop_slots {
                 if self.p[y] == 0 {
                     y_drop += 1;
+                } else if self.p[y] != val {
+                    return None;
                 }
             }
             if y_drop == 0 {
@@ -223,7 +247,12 @@ impl Board {
 const DROP_POS: [bool; 11] = [
     false, false, true, false, true, false, true, false, true, false, false,
 ];
-const DROPS: [[usize; 3]; 4] = [[2, 11, 15], [4, 12, 16], [6, 13, 17], [8, 14, 18]];
+const DROPS: [[usize; 5]; 4] = [
+    [2, 11, 15, 19, 23],
+    [4, 12, 16, 20, 24],
+    [6, 13, 17, 21, 25],
+    [8, 14, 18, 22, 26],
+];
 // num of places it can drop
 // None - illegal
 // 0 - stay there
@@ -247,19 +276,22 @@ fn get_cost(val: u8) -> usize {
 
 fn main() {
     let mut start = vec![0u8; 11];
-    start.append(
-        &mut include_str!("../input/23.txt")
-            .bytes()
-            .filter(|c| c.is_ascii_alphabetic())
-            .map(|c| 1 + c - b'A')
-            .collect(),
-    );
+    let input: Vec<_> = include_str!("../input/23.txt")
+        .bytes()
+        .filter(|c| c.is_ascii_alphabetic())
+        .map(|c| 1 + c - b'A')
+        .collect();
+    start.extend_from_slice(&input[0..4]);
+    start.extend_from_slice(&[4, 3, 2, 1, 4, 2, 1, 3]);
+    start.extend_from_slice(&input[4..]);
+    // for part one uncomment this
+    // start.extend_from_slice(&[1, 2, 3, 4, 1, 2, 3, 4]);
 
     let b = Board { p: start, score: 0 };
     println!("{}", b);
 
     let mut heap = BinaryHeap::new();
-    let mut checked: HashSet<Board> = HashSet::new();
+    let mut checked: HashMap<Vec<u8>, usize> = HashMap::new();
     heap.push(b);
     let mut first = true;
     while !heap.is_empty() {
@@ -270,19 +302,19 @@ fn main() {
             }
             first = false;
             for b in attempt.get_moves() {
-                if let Some(exising) = checked.get(&b) {
-                    if b.score < exising.score {
-                        checked.remove(&b);
-                        checked.insert(b.clone());
+                if let Some(&exising) = checked.get(&b.p) {
+                    if b.score < exising {
+                        checked.insert(b.p.clone(), b.score);
                         heap.push(b);
                     }
                 } else {
-                    checked.insert(b.clone());
+                    checked.insert(b.p.clone(), b.score);
                     heap.push(b);
                 }
             }
         }
     }
+    println!("No solution");
 }
 
 #[cfg(test)]
@@ -291,19 +323,28 @@ mod test {
 
     #[test]
     fn test_move() {
-        let mut p = vec![0u8; 19];
+        let mut p = vec![0u8; 27];
 
+        p[1] = 2;
         p[11] = 1;
         p[15] = 1;
+        p[19] = 1;
+        p[23] = 1;
 
-        p[12] = 2;
+        p[12] = 0;
         p[16] = 2;
+        p[20] = 1;
+        p[24] = 2;
 
         p[13] = 3;
         p[17] = 3;
+        p[21] = 3;
+        p[25] = 3;
 
         p[14] = 4;
         p[18] = 4;
+        p[22] = 4;
+        p[26] = 4;
 
         let b = Board { p, score: 0 };
         println!("{}", b);
