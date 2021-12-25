@@ -1,6 +1,4 @@
 use std::fmt::Display;
-
-use itertools::Itertools;
 use Square::*;
 
 #[derive(Debug, PartialEq)]
@@ -100,15 +98,14 @@ fn main() {
                         '>' => Right,
                         _ => Empty,
                     })
-                    .collect_vec()
+                    .collect()
             })
-            .collect_vec(),
+            .collect(),
     );
 
     let mut count = 1;
     while board.swim() {
         count += 1;
-        //        println!("{}", board);
     }
     println!("{}", board);
     println!("P1 {}", count);
