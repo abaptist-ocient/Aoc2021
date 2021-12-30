@@ -1,13 +1,10 @@
-use std::fmt::Display;
-
-#[derive(Debug)]
 struct Board {
     grid: Vec<Vec<char>>,
     x_len: usize,
     y_len: usize,
 }
 
-impl Display for Board {
+impl std::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.grid.iter().try_for_each(|row| {
             row.iter().try_for_each(|square| write!(f, "{}", square))?;
@@ -17,11 +14,6 @@ impl Display for Board {
 }
 
 impl Board {
-    fn swim(&mut self) -> bool {
-        let east_count = self.swim_east();
-        let south_count = self.swim_south();
-        east_count + south_count > 0
-    }
     fn swim_south(&mut self) -> usize {
         let mut moves = Vec::new();
         for y in 0..self.y_len {
@@ -74,7 +66,7 @@ fn main() {
     );
 
     let mut count = 1;
-    while board.swim() {
+    while board.swim_east() + board.swim_south() > 0 {
         count += 1;
     }
     println!("{}", board);
