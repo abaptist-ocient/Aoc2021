@@ -1,30 +1,8 @@
 use std::fmt::Display;
-use Square::*;
-
-#[derive(Debug, PartialEq)]
-enum Square {
-    Down,
-    Right,
-    Empty,
-}
-
-impl Display for Square {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Down => 'v',
-                Right => '>',
-                Empty => '.',
-            }
-        )
-    }
-}
 
 #[derive(Debug)]
 struct Board {
-    grid: Vec<Vec<Square>>,
+    grid: Vec<Vec<char>>,
     x_len: usize,
     y_len: usize,
 }
@@ -48,15 +26,15 @@ impl Board {
         let mut moves = Vec::new();
         for y in 0..self.y_len {
             for x in 0..self.x_len {
-                if self.grid[y][x] == Down && self.grid[(y + 1) % self.y_len][x] == Empty {
+                if self.grid[y][x] == 'v' && self.grid[(y + 1) % self.y_len][x] == '.' {
                     moves.push((x, y));
                 }
             }
         }
         let count = moves.len();
         for (x, y) in moves {
-            self.grid[y][x] = Empty;
-            self.grid[(y + 1) % self.y_len][x] = Down
+            self.grid[y][x] = '.';
+            self.grid[(y + 1) % self.y_len][x] = 'v'
         }
         count
     }
@@ -65,20 +43,20 @@ impl Board {
         let mut moves = Vec::new();
         for y in 0..self.y_len {
             for x in 0..self.x_len {
-                if self.grid[y][x] == Right && self.grid[y][(x + 1) % self.x_len] == Empty {
+                if self.grid[y][x] == '>' && self.grid[y][(x + 1) % self.x_len] == '.' {
                     moves.push((x, y));
                 }
             }
         }
         let count = moves.len();
         for (x, y) in moves {
-            self.grid[y][x] = Empty;
-            self.grid[y][(x + 1) % self.x_len] = Right
+            self.grid[y][x] = '.';
+            self.grid[y][(x + 1) % self.x_len] = '>'
         }
         count
     }
 
-    fn new(grid: Vec<Vec<Square>>) -> Self {
+    fn new(grid: Vec<Vec<char>>) -> Self {
         Board {
             y_len: grid.len(),
             x_len: grid[0].len(),
@@ -91,15 +69,7 @@ fn main() {
     let mut board = Board::new(
         include_str!("../input/25.txt")
             .lines()
-            .map(|line| {
-                line.chars()
-                    .map(|c| match c {
-                        'v' => Down,
-                        '>' => Right,
-                        _ => Empty,
-                    })
-                    .collect()
-            })
+            .map(|line| line.chars().collect())
             .collect(),
     );
 
