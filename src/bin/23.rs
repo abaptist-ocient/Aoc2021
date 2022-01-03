@@ -1,3 +1,5 @@
+#![feature(int_abs_diff, mixed_integer_ops)]
+
 use std::{
     collections::{BinaryHeap, HashMap},
     fmt::{Display, Formatter},
@@ -139,63 +141,43 @@ impl Board {
 
     // all boards from this postion that are valid
     fn move_horizontal(&self, pos: usize, must_drop: bool) -> Vec<Board> {
+        [
+            &self.move_horizontal_dir(pos, must_drop, 1)[..],
+            &self.move_horizontal_dir(pos, must_drop, -1)[..],
+        ]
+        .concat()
+    }
+
+    fn move_horizontal_dir(&self, pos: usize, must_drop: bool, delta: isize) -> Vec<Board> {
         let mut moves = Vec::new();
-        // move right
-        self.move_right(pos, must_drop, &mut moves);
-        if pos > 0 {
-            self.move_left(pos, must_drop, &mut moves);
+        let val = self.p[pos];
+
+        let mut x = pos;
+        loop {
+            x = x.overflowing_add_signed(delta).0;
+            if x >= 11 {
+                break;
+            }
+            if self.p[x] == 0 {
+                if let Some(drop_slots) = check_drop(&x, val) {
+                    // clone but move the current 
+                    let mut p = self.p.clone();
+                    p[x] = val;
+                    p[pos] = 0;
+                    let y_drop = match self.try_drop(drop_slots, &mut p, val, x) {
+                        Some(value) => value,
+                        None => continue,
+                    };
+                    if y_drop > 0 || !must_drop {
+                        let score = self.score + (pos.abs_diff(x) + y_drop) * get_cost(val);
+                        moves.push(Board { p, score });
+                    }
+                }
+            } else {
+                break;
+            }
         }
         moves
-    }
-
-    fn move_left(&self, pos: usize, must_drop: bool, moves: &mut Vec<Board>) {
-        let val = self.p[pos];
-
-        for x in (0..pos).rev() {
-            if self.p[x] == 0 {
-                let mut p = self.p.clone();
-                p[x] = p[pos];
-                p[pos] = 0;
-
-                if let Some(drop_slots) = check_drop(&x, p[x]) {
-                    let y_drop = match self.try_drop(drop_slots, &mut p, val, x) {
-                        Some(value) => value,
-                        None => continue,
-                    };
-                    if y_drop > 0 || !must_drop {
-                        let score = self.score + ((pos - x) + y_drop) * get_cost(val);
-                        moves.push(Board { p, score });
-                    }
-                }
-            } else {
-                break;
-            }
-        }
-    }
-
-    fn move_right(&self, pos: usize, must_drop: bool, moves: &mut Vec<Board>) {
-        let val = self.p[pos];
-
-        for x in pos + 1..=10 {
-            if self.p[x] == 0 {
-                let mut p = self.p.clone();
-                p[x] = val;
-                p[pos] = 0;
-
-                if let Some(drop_slots) = check_drop(&x, p[x]) {
-                    let y_drop = match self.try_drop(drop_slots, &mut p, val, x) {
-                        Some(value) => value,
-                        None => continue,
-                    };
-                    if y_drop > 0 || !must_drop {
-                        let score = self.score + ((x - pos) + y_drop) * get_cost(val);
-                        moves.push(Board { p, score });
-                    }
-                }
-            } else {
-                break;
-            }
-        }
     }
 
     // rise up if possible from this pos - return "temp pos" and cost to get up
@@ -282,16 +264,16 @@ fn main() {
         .map(|c| 1 + c - b'A')
         .collect();
     start.extend_from_slice(&input[0..4]);
+    // for part one comment this line and uncomment one below
     start.extend_from_slice(&[4, 3, 2, 1, 4, 2, 1, 3]);
     start.extend_from_slice(&input[4..]);
-    // for part one uncomment this
     // start.extend_from_slice(&[1, 2, 3, 4, 1, 2, 3, 4]);
 
     let b = Board { p: start, score: 0 };
     println!("{}", b);
 
     let mut heap = BinaryHeap::new();
-    let mut checked: HashMap<Vec<u8>, usize> = HashMap::new();
+    let mut checked = HashMap::new();
     heap.push(b);
     let mut first = true;
     while !heap.is_empty() {
